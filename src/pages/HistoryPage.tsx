@@ -7,6 +7,7 @@ const actionLabels = {
   accept: { label: '接受', color: 'green' },
   return: { label: '退回', color: 'volcano' },
   manual_edit: { label: '人工编辑', color: 'blue' },
+  receipt_settle: { label: '回执对账', color: 'geekblue' },
   reset: { label: '重置', color: 'default' },
 }
 
