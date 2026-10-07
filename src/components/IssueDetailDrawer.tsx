@@ -51,7 +51,7 @@ export function IssueDetailDrawer({
       onClose={onClose}
       extra={<Tag color={color}>{severityLabels[issue.severity]}</Tag>}
       footer={
-        issue.status === 'open' ? (
+        issue.status === 'open' || issue.status === 'reopened' ? (
           <Space>
             <Button icon={<CloseOutlined />} onClick={() => reason.trim() && onReturn(reason)}>
               退回并说明
@@ -79,6 +79,15 @@ export function IssueDetailDrawer({
         message={issue.title}
         description={issue.description}
       />
+      {issue.status === 'reopened' && issue.reopenReason && (
+        <Alert
+          className="drawer-reopen-alert"
+          showIcon
+          type="warning"
+          message="中心判退后按原因重开"
+          description={issue.reopenReason}
+        />
+      )}
       <Descriptions
         className="issue-descriptions"
         title="记录上下文"

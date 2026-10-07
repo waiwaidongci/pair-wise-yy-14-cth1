@@ -2,19 +2,25 @@ import { ClockCircleOutlined, RollbackOutlined, SafetyCertificateOutlined } from
 import { App as AntdApp, Button, Card, Empty, List, Popconfirm, Space, Tag, Timeline, Typography } from 'antd'
 import { useValidationStore } from '../stores/validationStore'
 
-const actionLabels = {
+const actionLabels: Record<
+  import('../types').OperationLog['action'],
+  { label: string; color: string }
+> = {
   batch_fix: { label: '批量修正', color: 'cyan' },
   accept: { label: '接受', color: 'green' },
   return: { label: '退回', color: 'volcano' },
   manual_edit: { label: '人工编辑', color: 'blue' },
   reset: { label: '重置', color: 'default' },
+  transfer_pack: { label: '移交定稿', color: 'geekblue' },
+  receipt_apply: { label: '回执对账', color: 'purple' },
+  receipt_recover: { label: '回执恢复', color: 'magenta' },
+  local_correction: { label: '冻结后更正', color: 'gold' },
 }
 
 export function HistoryPage() {
   const { message } = AntdApp.useApp()
   const operations = useValidationStore((state) => state.operations)
   const rollback = useValidationStore((state) => state.rollback)
-
   return (
     <div className="page-stack">
       <div className="page-heading">
@@ -39,21 +45,30 @@ export function HistoryPage() {
                     <Popconfirm
                       key="rollback"
                       title="回滚到该操作之前？"
-                      description="该操作之后的所有修改也会被覆盖。"
+                      description={
+                        operation.locked
+                          ? '该操作涉及移交定稿或中心回执，按审计要求不可回滚。'
+                          : '该操作之后的所有修改也会被覆盖。'
+                      }
                       okText="确认回滚"
                       cancelText="取消"
-                      disabled={operation.rolledBack}
+                      disabled={operation.rolledBack || operation.locked}
                       onConfirm={() => {
-                        rollback(operation.id)
-                        void message.success(`已回滚：${operation.title}`)
+                        const result = rollback(operation.id)
+                        if (result.ok) void message.success(`已回滚：${operation.title}`)
+                        else void message.warning(result.reason || '该操作不可回滚')
                       }}
                     >
                       <Button
                         type="link"
                         icon={<RollbackOutlined />}
-                        disabled={operation.rolledBack}
+                        disabled={operation.rolledBack || operation.locked}
                       >
-                        {operation.rolledBack ? '已回滚' : '恢复此版本'}
+                        {operation.locked
+                          ? '定稿锁定'
+                          : operation.rolledBack
+                            ? '已回滚'
+                            : '恢复此版本'}
                       </Button>
                     </Popconfirm>,
                   ]}

@@ -150,3 +150,9 @@ button, input, textarea { font: inherit; }
   .stats-grid .stat-card--progress { grid-column: span 4; }
   .rules-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ---------------------------- 回执对账页面 ---------------------------- */
+.reconcile-stats { display: grid; grid-template-columns: repeat(5, minmax(150px, 1fr)); gap: 12px; }
+.reconcile-stats .stat-card__value { font-size: 22px; }
+.drawer-reopen-alert { margin-top: 12px; }
+.reconcile-stats .ant-card-body small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

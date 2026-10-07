@@ -1,4 +1,5 @@
-import type { BirdRecord, OperationLog, ValidationIssue } from '../types'
+import type { BirdRecord, OperationLog, ReconcileState, ValidationIssue } from '../types'
+import { selectPendingTransfer } from './reconciliation'
 
 function download(content: BlobPart, filename: string, type: string) {
   const blob = new Blob([content], { type })
@@ -13,7 +14,7 @@ function download(content: BlobPart, filename: string, type: string) {
 export function exportRecordsCsv(records: BirdRecord[], issues: ValidationIssue[]) {
   const issueByRecord = new Map<string, ValidationIssue[]>()
   issues
-    .filter((issue) => issue.status === 'open')
+    .filter((issue) => issue.status === 'open' || issue.status === 'reopened')
     .forEach((issue) => {
       issueByRecord.set(issue.recordId, [...(issueByRecord.get(issue.recordId) || []), issue])
     })
@@ -73,10 +74,11 @@ export function exportTransferJson(
     center: '华东区域鸟类环志中心',
     summary: {
       records: records.length,
-      unresolvedIssues: issues.filter((issue) => issue.status === 'open').length,
+      unresolvedIssues: issues.filter((issue) => issue.status === 'open' || issue.status === 'reopened').length,
       correctedIssues: issues.filter((issue) => issue.status === 'corrected').length,
       acceptedIssues: issues.filter((issue) => issue.status === 'accepted').length,
       returnedIssues: issues.filter((issue) => issue.status === 'returned').length,
+      reopenedIssues: issues.filter((issue) => issue.status === 'reopened').length,
     },
     records,
     issues,
@@ -94,6 +96,7 @@ export function exportValidationCsv(issues: ValidationIssue[], records: BirdReco
     accepted: '已接受',
     returned: '已退回',
     corrected: '已修正',
+    reopened: '判退重开',
   }
   const rows = issues.map((issue) => {
     const record = recordsById.get(issue.recordId)
@@ -114,4 +117,46 @@ export function exportValidationCsv(issues: ValidationIssue[], records: BirdReco
       .join(',')
   })
   download(`\uFEFF${[headers.join(','), ...rows].join('\n')}`, '校验问题清单.csv', 'text/csv;charset=utf-8')
+}
+
+/** 待移交清单（回执更新后按新结果重算）：冻结的不出现，判退重开处理完、挂起销项后再带回 */
+export function exportPendingTransferCsv(
+  records: BirdRecord[],
+  reconcile: ReconcileState,
+  issues: ValidationIssue[],
+) {
+  const pending = selectPendingTransfer(reconcile, records, issues)
+  const latest = new Map<string, import('../types').LedgerEntry>()
+  for (const entry of reconcile.ledger) {
+    const existing = latest.get(entry.recordId)
+    if (!existing || existing.transferredAt <= entry.transferredAt) latest.set(entry.recordId, entry)
+  }
+  const headers = [
+    '记录编号', '原始环号', '归一化环号', '鸟种', '观察时间', '地点',
+    '上一批次', '中心记录号', '移交状态', '中心判退原因',
+  ]
+  const rows = pending.map((record) => {
+    const entry = latest.get(record.id)
+    const rejectReason = entry?.current?.kind === 'rejected' ? entry.current.reason : ''
+    const statusText = !entry
+      ? '首次移交'
+      : entry.status === 'rejected'
+        ? '判退后重开待重交'
+        : '挂起销项后带回重报'
+    return [
+      record.id,
+      record.rawRingCode,
+      record.normalizedRingCode,
+      record.speciesCanonical,
+      record.observedAt,
+      record.location,
+      entry?.batchId ?? '',
+      entry?.centerRecordNo ?? '',
+      statusText,
+      rejectReason,
+    ]
+      .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+      .join(',')
+  })
+download(`﻿${[headers.join(','), ...rows].join('\n')}`, '待移交清单（按对账结果重算）.csv', 'text/csv;charset=utf-8')
 }

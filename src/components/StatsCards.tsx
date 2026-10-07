@@ -13,7 +13,7 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ totalRecords, issues }: StatsCardsProps) {
-  const open = issues.filter((issue) => issue.status === 'open')
+  const open = issues.filter((issue) => issue.status === 'open' || issue.status === 'reopened')
   const resolved = issues.length - open.length
   const completion = issues.length ? Math.round((resolved / issues.length) * 100) : 100
   const cards = [

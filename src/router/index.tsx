@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { App } from '../App'
 import { HistoryPage } from '../pages/HistoryPage'
+import { ReconcilePage } from '../pages/ReconcilePage'
 import { RecordsPage } from '../pages/RecordsPage'
 import { RulesPage } from '../pages/RulesPage'
 import { ValidationPage } from '../pages/ValidationPage'
@@ -12,6 +13,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate replace to="/validation" /> },
       { path: 'validation', element: <ValidationPage /> },
+      { path: 'reconcile', element: <ReconcilePage /> },
       { path: 'records', element: <RecordsPage /> },
       { path: 'history', element: <HistoryPage /> },
       { path: 'rules', element: <RulesPage /> },

@@ -40,6 +40,7 @@ const statusMeta: Record<IssueStatus, { label: string; color: string }> = {
   accepted: { label: '已接受', color: 'green' },
   returned: { label: '已退回', color: 'volcano' },
   corrected: { label: '已修正', color: 'cyan' },
+  reopened: { label: '判退重开', color: 'orange' },
 }
 
 export function ValidationPage() {
@@ -56,7 +57,7 @@ export function ValidationPage() {
   const rollback = useValidationStore((state) => state.rollback)
   const reset = useValidationStore((state) => state.reset)
   const [severity, setSeverity] = useState<IssueSeverity | 'all'>('all')
-  const [status, setStatus] = useState<IssueStatus | 'all'>('open')
+  const [status, setStatus] = useState<IssueStatus | 'all' | 'unresolved'>('unresolved')
   const [issueType, setIssueType] = useState<ValidationIssue['type'] | 'all'>('all')
   const [keyword, setKeyword] = useState('')
   const [activeIssueId, setActiveIssueId] = useState<string | null>(null)
@@ -72,7 +73,7 @@ export function ValidationPage() {
 
   const ruleItems: MenuProps['items'] = ISSUE_RULES.filter((rule) => rule.correctionMode === 'automatic').map((rule) => ({
     key: rule.type,
-    label: `${rule.label}（${issues.filter((issue) => issue.type === rule.type && issue.status === 'open').length}）`,
+    label: `${rule.label}（${issues.filter((issue) => issue.type === rule.type && (issue.status === 'open' || issue.status === 'reopened')).length}）`,
   }))
 
   const runBatchFix = (type: string) => {
@@ -151,10 +152,11 @@ export function ValidationPage() {
             />
             <Select
               value={status}
-              style={{ width: 128 }}
+              style={{ width: 148 }}
               onChange={setStatus}
               options={[
                 { value: 'all', label: '全部状态' },
+                { value: 'unresolved', label: '未决（待处理/重开）' },
                 ...Object.entries(statusMeta).map(([value, meta]) => ({ value, label: meta.label })),
               ]}
             />
@@ -231,12 +233,13 @@ export function ValidationPage() {
             </Dropdown>
             <Button
               icon={<RollbackOutlined />}
-              disabled={!operations.some((operation) => !operation.rolledBack)}
+              disabled={!operations.some((operation) => !operation.rolledBack && !operation.locked)}
               onClick={() => {
-                const target = operations.find((operation) => !operation.rolledBack)
+                const target = operations.find((operation) => !operation.rolledBack && !operation.locked)
                 if (target) {
-                  rollback(target.id)
-                  void message.success(`已回滚：${target.title}`)
+                  const result = rollback(target.id)
+                  if (result.ok) void message.success(`已回滚：${target.title}`)
+                  else void message.warning(result.reason || '该操作不可回滚')
                 }
               }}
             >
@@ -285,9 +288,13 @@ export function ValidationPage() {
         }}
         onSave={(value, reason) => {
           if (activeIssue && activeRecord) {
-            updateRecord(activeRecord.id, { [activeIssue.field]: value }, reason)
+            const result = updateRecord(activeRecord.id, { [activeIssue.field]: value }, reason)
             setActiveIssueId(null)
-            void message.success('修正已保存，原值可回滚')
+            if (result.frozen) {
+              void message.warning('该记录已被中心判通过并冻结，后到更正仅登记差异，定稿未改动')
+            } else {
+              void message.success('修正已保存，原值可回滚')
+            }
           }
         }}
       />

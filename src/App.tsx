@@ -3,12 +3,14 @@ import {
   CheckSquareOutlined,
   DatabaseOutlined,
   HistoryOutlined,
+  SwapOutlined,
 } from '@ant-design/icons'
 import { Layout, Tag } from 'antd'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 
 const NAV_ITEMS = [
   { path: '/validation', label: '问题校验', icon: <CheckSquareOutlined /> },
+  { path: '/reconcile', label: '回执对账', icon: <SwapOutlined /> },
   { path: '/records', label: '合并记录', icon: <DatabaseOutlined /> },
   { path: '/history', label: '操作历史', icon: <HistoryOutlined /> },
   { path: '/rules', label: '规则词典', icon: <AuditOutlined /> },
